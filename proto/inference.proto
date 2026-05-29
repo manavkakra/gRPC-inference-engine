@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package inference;
+
+// ─────────────────────────────────────────────
+//  Core data types
+// ─────────────────────────────────────────────
+
+message Transaction {
+  string transaction_id   = 1;
+  string entity_id        = 2;   // user_id or account_id
+  double amount           = 3;
+  string merchant_id      = 4;
+  string merchant_category = 5;
+  double latitude         = 6;
+  double longitude        = 7;
+  int64  timestamp_ms     = 8;
+  map<string, string> metadata = 9;
+}
+
+message FeatureVector {
+  string entity_id               = 1;
+  int64  computed_at_ms          = 2;
+
+  // Rolling window features — 1 second
+  double amount_sum_1s           = 3;
+  double amount_mean_1s          = 4;
+  double amount_std_1s           = 5;
+  int32  txn_count_1s            = 6;
+
+  // Rolling window features — 5 seconds
+  double amount_sum_5s           = 7;
+  double amount_mean_5s          = 8;
+  double amount_std_5s           = 9;
+  int32  txn_count_5s            = 10;
+  double amount_max_5s           = 11;
+
+  // Rolling window features — 60 seconds
+  double amount_sum_60s          = 12;
+  double amount_mean_60s         = 13;
+  double amount_std_60s          = 14;
+  int32  txn_count_60s           = 15;
+  double amount_max_60s          = 16;
+  double amount_min_60s          = 17;
+
+  // Velocity & anomaly features
+  double amount_zscore           = 18;   // z-score vs 60s window
+  double velocity_change_ratio   = 19;   // txn_count_1s / txn_count_60s (normalized)
+  int32  unique_merchants_60s    = 20;
+  double geo_distance_delta      = 21;   // km from last transaction
+
+  // Raw features for pass-through
+  double current_amount          = 22;
+  string merchant_category       = 23;
+}
+
+// ─────────────────────────────────────────────
+//  Inference Request / Response
+// ─────────────────────────────────────────────
+
+message InferenceRequest {
+  string request_id       = 1;
+  Transaction transaction = 2;
+  bool   include_features = 3;   // return FeatureVector in response
+  bool   explain          = 4;   // return feature importances
+}
+
+message InferenceResponse {
+  string request_id              = 1;
+  string transaction_id          = 2;
+  float  fraud_probability       = 3;
+  bool   is_fraud                = 4;
+  float  confidence              = 5;
+  string decision                = 6;   // APPROVE / REVIEW / DECLINE
+  int64  inference_latency_us    = 7;   // microseconds
+  int64  feature_latency_us      = 8;
+  FeatureVector features         = 9;   // populated if include_features=true
+  map<string, float> explanations = 10; // populated if explain=true
+  string model_version           = 11;
+}
+
+// ─────────────────────────────────────────────
+//  Batch Inference
+// ─────────────────────────────────────────────
+
+message BatchInferenceRequest {
+  repeated InferenceRequest requests = 1;
+  int32 timeout_ms                   = 2;
+}
+
+message BatchInferenceResponse {
+  repeated InferenceResponse responses = 1;
+  int64 total_latency_us               = 2;
+  int32 succeeded                      = 3;
+  int32 failed                         = 4;
+}
+
+// ─────────────────────────────────────────────
+//  Feature Store RPC (direct feature access)
+// ─────────────────────────────────────────────
+
+message FeatureRequest {
+  string entity_id       = 1;
+  repeated string fields = 2;   // empty = all fields
+}
+
+message HealthRequest  {}
+message HealthResponse {
+  bool   healthy          = 1;
+  string version          = 2;
+  int64  uptime_seconds   = 3;
+  int32  requests_served  = 4;
+  float  cache_hit_rate   = 5;
+}
+
+// ─────────────────────────────────────────────
+//  Service Definitions
+// ─────────────────────────────────────────────
+
+service InferenceService {
+  // Single transaction scoring
+  rpc Predict(InferenceRequest) returns (InferenceResponse);
+
+  // Batch scoring — lower overhead per request
+  rpc BatchPredict(BatchInferenceRequest) returns (BatchInferenceResponse);
+
+  // Streaming: send transactions, receive real-time scores
+  rpc StreamPredict(stream Transaction) returns (stream InferenceResponse);
+
+  // Direct feature vector retrieval
+  rpc GetFeatures(FeatureRequest) returns (FeatureVector);
+
+  // Health / readiness probe
+  rpc Health(HealthRequest) returns (HealthResponse);
+}

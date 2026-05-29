@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature Store Monitor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+    :root {
+      --bg: #0a0d11;
+      --surface: #111620;
+      --border: #1e2738;
+      --accent: #00d4ff;
+      --green: #00e676;
+      --yellow: #ffea00;
+      --red: #ff1744;
+      --orange: #ff6d00;
+      --text: #c8d8e8;
+      --muted: #4a5c70;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: conic-gradient(from 0deg, var(--accent), var(--green), var(--accent));
+      border-radius: 8px;
+      animation: spin 8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .logo h1 {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    .logo small {
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(0, 230, 118, .5);
+      }
+
+      50% {
+        opacity: 0.8;
+        box-shadow: 0 0 0 5px rgba(0, 230, 118, 0);
+      }
+    }
+
+    #uptime {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kpi {
+      background: var(--surface);
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .kpi-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .kpi-value {
+      font-family: var(--font-mono);
+      font-size: 26px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .kpi-unit {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted);
+      margin-left: 3px;
+    }
+
+    .kpi-delta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .kpi-delta.up {
+      color: var(--green);
+    }
+
+    .kpi-delta.down {
+      color: var(--red);
+    }
+
+    .accent {
+      color: var(--accent);
+    }
+
+    .green {
+      color: var(--green);
+    }
+
+    .yellow {
+      color: var(--yellow);
+    }
+
+    .red {
+      color: var(--red);
+    }
+
+    .orange {
+      color: var(--orange);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 1px;
+      background: var(--border);
+      flex: 1;
+      padding: 1px;
+    }
+
+    .panel {
+      background: var(--surface);
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 240px;
+    }
+
+    .panel.wide {
+      grid-column: span 2;
+    }
+
+    .panel.tall {
+      grid-row: span 2;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .panel-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: rgba(0, 212, 255, .1);
+      color: var(--accent);
+      border: 1px solid rgba(0, 212, 255, .2);
+    }
+
+    canvas {
+      max-height: 180px;
+    }
+
+    .decisions-wrap {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      flex: 1;
+    }
+
+    .decisions-ring {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      flex-shrink: 0;
+    }
+
+    .ring-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .ring-total {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .ring-label {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: .06em;
+    }
+
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legend-name {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      min-width: 64px;
+    }
+
+    .legend-val {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      margin-left: auto;
+    }
+
+    .lat-table {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .lat-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 60px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lat-name {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .lat-bar {
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .lat-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .6s ease;
+    }
+
+    .lat-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    #event-log {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--muted);
+      overflow-y: auto;
+      flex: 1;
+      max-height: 180px;
+    }
+
+    .log-line {
+      display: flex;
+      gap: 10px;
+      padding: 1px 0;
+    }
+
+    .log-time {
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .log-entity {
+      color: var(--accent);
+    }
+
+    .log-approve {
+      color: var(--green);
+    }
+
+    .log-review {
+      color: var(--yellow);
+    }
+
+    .log-decline {
+      color: var(--red);
+    }
+
+    .sla-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .sla-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      border: 1px solid var(--border);
+    }
+
+    .sla-chip.ok {
+      background: rgba(0, 230, 118, .07);
+      border-color: rgba(0, 230, 118, .25);
+      color: var(--green);
+    }
+
+    .sla-chip.warn {
+      background: rgba(255, 234, 0, .07);
+      border-color: rgba(255, 234, 0, .25);
+      color: var(--yellow);
+    }
+
+    .sla-chip.bad {
+      background: rgba(255, 23, 68, .07);
+      border-color: rgba(255, 23, 68, .25);
+      color: var(--red);
+    }
+
+    .sla-icon {
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <div>
+        <h1>Feature Store Monitor</h1>
+        <small>Streaming Inference Engine · Real-time</small>
+      </div>
+    </div>
+    <div class="status-row">
+      <div class="status-pill">
+        <div class="dot"></div> All systems operational
+      </div>
+      <div id="uptime">uptime: 0s</div>
+    </div>
+  </header>
+
+  <!-- KPI strip -->
+  <div class="kpi-strip">
+    <div class="kpi">
+      <div class="kpi-label">Ingestion RPS</div>
+      <div class="kpi-value accent" id="k-rps">—<span class="kpi-unit">req/s</span></div>
+      <div class="kpi-delta" id="k-rps-d">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Inference p50</div>
+      <div class="kpi-value green" id="k-p50">—<span class="kpi-unit">ms</span></div>
+      <div class="kpi-delta">end-to-end latency</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Inference p99</div>
+      <div class="kpi-value yellow" id="k-p99">—<span class="kpi-unit">ms</span></div>
+      <div class="kpi-delta">tail latency</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Cache Hit Rate</div>
+      <div class="kpi-value green" id="k-cache">—<span class="kpi-unit">%</span></div>
+      <div class="kpi-delta">L1 memory cache</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Fraud Rate</div>
+      <div class="kpi-value orange" id="k-fraud">—<span class="kpi-unit">%</span></div>
+      <div class="kpi-delta">of all transactions</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Requests</div>
+      <div class="kpi-value accent" id="k-total">—</div>
+      <div class="kpi-delta" id="k-entities">— entities tracked</div>
+    </div>
+  </div>
+
+  <!-- Charts grid -->
+  <div class="grid">
+
+    <!-- Ingestion throughput (wide) -->
+    <div class="panel wide">
+      <div class="panel-header">
+        <span class="panel-title">Ingestion Throughput</span>
+        <span class="panel-badge">events / sec</span>
+      </div>
+      <canvas id="chart-rps"></canvas>
+    </div>
+
+    <!-- Decision donut -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Decision Distribution</span>
+      </div>
+      <div class="decisions-wrap">
+        <div class="decisions-ring">
+          <canvas id="chart-decisions"></canvas>
+          <div class="ring-center">
+            <div class="ring-total" id="ring-total">0</div>
+            <div class="ring-label">total</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--green)"></div>
+            <div class="legend-name">APPROVE</div>
+            <div class="legend-val green" id="d-approve">0</div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--yellow)"></div>
+            <div class="legend-name">REVIEW</div>
+            <div class="legend-val yellow" id="d-review">0</div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--red)"></div>
+            <div class="legend-name">DECLINE</div>
+            <div class="legend-val red" id="d-decline">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inference latency -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Inference Latency</span>
+        <span class="panel-badge">ms</span>
+      </div>
+      <canvas id="chart-latency"></canvas>
+    </div>
+
+    <!-- Fraud rate -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Fraud Rate</span>
+        <span class="panel-badge">%</span>
+      </div>
+      <canvas id="chart-fraud"></canvas>
+    </div>
+
+    <!-- Latency breakdown -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Latency Breakdown</span>
+      </div>
+      <div class="lat-table">
+        <div class="lat-row">
+          <div class="lat-name">L1 cache</div>
+          <div class="lat-bar">
+            <div class="lat-fill" id="b-l1" style="background:var(--green);width:1%"></div>
+          </div>
+          <div class="lat-num green" id="n-l1">—</div>
+        </div>
+        <div class="lat-row">
+          <div class="lat-name">Feature eng</div>
+          <div class="lat-bar">
+            <div class="lat-fill" id="b-fe" style="background:var(--accent);width:1%"></div>
+          </div>
+          <div class="lat-num accent" id="n-fe">—</div>
+        </div>
+        <div class="lat-row">
+          <div class="lat-name">Model infer</div>
+          <div class="lat-bar">
+            <div class="lat-fill" id="b-mi" style="background:var(--yellow);width:1%"></div>
+          </div>
+          <div class="lat-num yellow" id="n-mi">—</div>
+        </div>
+        <div class="lat-row">
+          <div class="lat-name">gRPC + ser</div>
+          <div class="lat-bar">
+            <div class="lat-fill" id="b-gr" style="background:var(--orange);width:1%"></div>
+          </div>
+          <div class="lat-num orange" id="n-gr">—</div>
+        </div>
+      </div>
+      <div class="sla-row" id="sla-row"></div>
+    </div>
+
+    <!-- Live event log -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Live Event Log</span>
+      </div>
+      <div id="event-log"></div>
+    </div>
+
+  </div>
+
+  <script>
+    Chart.defaults.color = '#4a5c70';
+    Chart.defaults.borderColor = '#1e2738';
+    Chart.defaults.font.family = 'IBM Plex Mono';
+    Chart.defaults.font.size = 10;
+
+    const ACCENT = '#00d4ff', GREEN = '#00e676', YELLOW = '#ffea00',
+      RED = '#ff1744', ORANGE = '#ff6d00';
+
+    function makeArea(id, color) {
+      const ctx = document.getElementById(id).getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 0, 200);
+      grad.addColorStop(0, color + '33');
+      grad.addColorStop(1, color + '00');
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [], datasets: [{
+            data: [], borderColor: color,
+            backgroundColor: grad, fill: true, tension: 0.4,
+            borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3
+          }]
+        },
+        options: {
+          animation: false, responsive: true, maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false }, tooltip: {
+              mode: 'index', intersect: false,
+              callbacks: { label: ctx => ' ' + ctx.parsed.y.toFixed(2) }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 6, maxRotation: 0 } },
+            y: { grid: { color: '#1e2738' }, beginAtZero: false }
+          }
+        }
+      });
+    }
+
+    function makeMultiLine(id, datasets) {
+      const ctx = document.getElementById(id).getContext('2d');
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [], datasets: datasets.map(d => ({
+            label: d.label, data: [], borderColor: d.color,
+            borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.4
+          }))
+        },
+        options: {
+          animation: false, responsive: true, maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: true, position: 'top',
+              labels: { boxWidth: 10, padding: 10 }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 6, maxRotation: 0 } },
+            y: { grid: { color: '#1e2738' }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    const chartRps = makeArea('chart-rps', ACCENT);
+    const chartFraud = makeArea('chart-fraud', ORANGE);
+    const chartLatency = makeMultiLine('chart-latency', [
+      { label: 'p50', color: GREEN },
+      { label: 'p99', color: YELLOW },
+    ]);
+
+    // Donut chart
+    const donutCtx = document.getElementById('chart-decisions').getContext('2d');
+    const donutChart = new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['APPROVE', 'REVIEW', 'DECLINE'],
+        datasets: [{
+          data: [1, 1, 1],
+          backgroundColor: [GREEN + 'cc', YELLOW + 'cc', RED + 'cc'],
+          borderColor: '#0a0d11', borderWidth: 2, hoverOffset: 4
+        }]
+      },
+      options: {
+        animation: false, cutout: '72%', responsive: true,
+        plugins: {
+          legend: { display: false }, tooltip: {
+            callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed.toLocaleString() }
+          }
+        }
+      }
+    });
+
+    function updateChart(chart, labels, data, datasetIndex = 0) {
+      chart.data.labels = labels;
+      chart.data.datasets[datasetIndex].data = data;
+      chart.update('none');
+    }
+
+    const merchants = ['grocery_mart', 'online_shop', 'gas_king', 'travel_co', 'atm_001'];
+    const entities = Array.from({ length: 30 }, (_, i) => `user_${String(i).padStart(5, '0')}`);
+
+    function addLogLine(dec, prob) {
+      const log = document.getElementById('event-log');
+      const now = new Date().toLocaleTimeString('en', { hour12: false });
+      const eid = entities[Math.floor(Math.random() * entities.length)];
+      const merch = merchants[Math.floor(Math.random() * merchants.length)];
+      const amt = (Math.random() * 500 + 10).toFixed(2);
+      const cls = { APPROVE: 'log-approve', REVIEW: 'log-review', DECLINE: 'log-decline' }[dec];
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.innerHTML = `<span class="log-time">${now}</span>` +
+        `<span class="log-entity">${eid}</span>` +
+        `<span>$${amt} @ ${merch}</span>` +
+        `<span class="${cls}">${dec}</span>` +
+        `<span style="color:var(--muted)">${(prob * 100).toFixed(1)}%</span>`;
+      log.prepend(line);
+      while (log.children.length > 30) log.lastChild.remove();
+    }
+
+    function renderSLA(p50, p99) {
+      const slas = [
+        { label: 'p50 < 1ms', ok: p50 < 1, val: `${p50.toFixed(2)}ms` },
+        { label: 'p99 < 15ms', ok: p99 < 15, val: `${p99.toFixed(2)}ms` },
+        { label: 'p99 < 50ms', ok: p99 < 50, val: p99 < 50 ? '✓' : '✗' },
+      ];
+      const row = document.getElementById('sla-row');
+      row.innerHTML = slas.map(s =>
+        `<div class="sla-chip ${s.ok ? 'ok' : 'warn'}">
+      <span class="sla-icon">${s.ok ? '✓' : '!'}</span> ${s.label}
+    </div>`
+      ).join('');
+    }
+
+    function renderLatBars(p50) {
+      // Approximate budget split (ms)
+      const l1 = 0.001, fe = p50 * 0.25, mi = p50 * 0.65, gr = p50 * 0.1;
+      const max = p50;
+      const pct = v => Math.min(100, (v / max) * 100).toFixed(1);
+      document.getElementById('b-l1').style.width = '2%';
+      document.getElementById('b-fe').style.width = pct(fe) + '%';
+      document.getElementById('b-mi').style.width = pct(mi) + '%';
+      document.getElementById('b-gr').style.width = pct(gr) + '%';
+      document.getElementById('n-l1').textContent = l1.toFixed(3) + 'ms';
+      document.getElementById('n-fe').textContent = fe.toFixed(3) + 'ms';
+      document.getElementById('n-mi').textContent = mi.toFixed(3) + 'ms';
+      document.getElementById('n-gr').textContent = gr.toFixed(3) + 'ms';
+    }
+
+    let prevRps = null;
+
+    async function poll() {
+      try {
+        const r = await fetch('/metrics');
+        const d = await r.json();
+
+        // KPIs
+        const rps = d.ingestion_rps.data.at(-1) ?? 0;
+        const p50 = d.inference_p50.data.at(-1) ?? 0;
+        const p99 = d.inference_p99.data.at(-1) ?? 0;
+        const cache = d.cache_hit_rate.data.at(-1) ?? 0;
+        const fraud = d.fraud_rate.data.at(-1) ?? 0;
+
+        document.getElementById('k-rps').childNodes[0].textContent = Math.round(rps).toLocaleString();
+        document.getElementById('k-p50').childNodes[0].textContent = p50.toFixed(2);
+        document.getElementById('k-p99').childNodes[0].textContent = p99.toFixed(2);
+        document.getElementById('k-cache').childNodes[0].textContent = cache.toFixed(1);
+        document.getElementById('k-fraud').childNodes[0].textContent = fraud.toFixed(1);
+        document.getElementById('k-total').textContent = d.total_requests.toLocaleString();
+        document.getElementById('k-entities').textContent = (d.entity_count.data.at(-1) ?? 0).toLocaleString() + ' entities';
+        document.getElementById('uptime').textContent = `uptime: ${d.uptime_seconds}s`;
+
+        // RPS delta
+        if (prevRps !== null) {
+          const delta = rps - prevRps;
+          const el = document.getElementById('k-rps-d');
+          el.textContent = (delta >= 0 ? '+' : '') + Math.round(delta) + ' vs prev';
+          el.className = 'kpi-delta ' + (delta >= 0 ? 'up' : 'down');
+        }
+        prevRps = rps;
+
+        // Charts
+        updateChart(chartRps, d.ingestion_rps.labels, d.ingestion_rps.data);
+        updateChart(chartFraud, d.fraud_rate.labels, d.fraud_rate.data);
+        updateChart(chartLatency, d.inference_p50.labels, d.inference_p50.data, 0);
+        updateChart(chartLatency, d.inference_p99.labels, d.inference_p99.data, 1);
+
+        // Donut
+        const dec = d.decisions;
+        donutChart.data.datasets[0].data = [dec.APPROVE, dec.REVIEW, dec.DECLINE];
+        donutChart.update('none');
+        const total = dec.APPROVE + dec.REVIEW + dec.DECLINE;
+        document.getElementById('ring-total').textContent = total > 999999 ? (total / 1e6).toFixed(1) + 'M' : total.toLocaleString();
+        document.getElementById('d-approve').textContent = dec.APPROVE.toLocaleString();
+        document.getElementById('d-review').textContent = dec.REVIEW.toLocaleString();
+        document.getElementById('d-decline').textContent = dec.DECLINE.toLocaleString();
+
+        // Latency bars + SLA
+        renderLatBars(p50);
+        renderSLA(p50, p99);
+
+        // Emit a few log lines
+        const decisions = ['APPROVE', 'APPROVE', 'APPROVE', 'REVIEW', 'DECLINE'];
+        for (let i = 0; i < 2; i++) {
+          const dec = decisions[Math.floor(Math.random() * decisions.length)];
+          const prob = dec === 'APPROVE' ? Math.random() * 0.3
+            : dec === 'REVIEW' ? 0.3 + Math.random() * 0.3
+              : 0.6 + Math.random() * 0.4;
+          addLogLine(dec, prob);
+        }
+      } catch (e) {
+        console.warn('Poll error:', e);
+      }
+    }
+
+    poll();
+    setInterval(poll, 1000);
+  </script>
+</body>
+
+</html>
