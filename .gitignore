@@ -28,3 +28,20 @@ proto/inference_pb2_grpc.py
 # Mypy
 .mypy_cache/
 
+# Models and Data
+*.pkl
+*.pt
+*.pth
+*.onnx
+*.h5
+*.csv
+*.parquet
+*.db
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+.coverage
+htmlcov/

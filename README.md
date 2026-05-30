@@ -91,9 +91,9 @@ An end-to-end, production-grade machine learning platform engineered for real-ti
 To run the full end-to-end system, you will need to start several processes. You can run these in separate terminal windows/tabs:
 
 1. **Start the Feature Store**  
-   Maintains the rolling aggregations and L1/L2 caches.
+   Maintains the rolling aggregations and L1/L2 caches. Consumes transactions from Kafka.
    ```bash
-   python -m feature_store.server --simulate
+   python -m feature_store.server
    ```
 
 2. **Start the gRPC Inference Server**  
@@ -108,12 +108,21 @@ To run the full end-to-end system, you will need to start several processes. You
    python -m stream_ingestion.simulator
    ```
 
-4. **Launch the Monitoring Dashboard**  
-   Provides a real-time view of system metrics, throughput, and latencies.
+4. **Launch the Observability Stack (Grafana & Prometheus)**  
+   The observability stack was started during the infrastructure setup. Ensure it is running:
    ```bash
-   python dashboard/app.py
+   docker-compose ps
    ```
-   Open your browser and navigate to http://localhost:8888.
+   Open your browser and navigate to **http://localhost:3000** to view the Real-Time Fraud Detection dashboard.
+
+## ⚠️ Local vs Production Tuning (RPS Limits)
+
+This architecture is designed to handle **1000+ Requests Per Second (RPS)** in production. Fraud is detected by measuring mathematical standard deviations in sub-second bursts (1s and 5s windows).
+
+**If you are testing locally on a laptop:**
+Your CPU will likely bottleneck Python's asyncio event loop to ~100-200 RPS. At this speed, the simulator physically cannot generate the high-density bursts the XGBoost model expects. 
+* To fix this, `scripts/train_model.py` is currently tuned for **Local Hardware**, which artificially slows down the synthetic training data so the model can detect fraud at 100 RPS.
+* **Before deploying to production**, you MUST edit `scripts/train_model.py` and increase the `txn_1s` and `txn_5s` generation rates to match your cloud cluster's true throughput, and re-enable `max_depth=8` on the XGBoost model.
 
 5. **Run the Benchmark (Optional)**  
    To test the inference speed and gRPC latency:
