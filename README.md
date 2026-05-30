@@ -1,6 +1,6 @@
 # Distributed Streaming Feature Store & Low-Latency Inference Engine
 
-A production-grade ML infrastructure system for real-time feature computation and model serving. Designed for fraud detection, high-frequency trading, and other latency-critical ML applications.
+An end-to-end, production-grade machine learning platform engineered for real-time transaction fraud detection. By seamlessly integrating high-throughput Kafka stream ingestion, a Redis-backed rolling feature store, and an ultra-low latency gRPC inference engine, this system processes thousands of events per second to evaluate and intercept fraudulent activity with sub-10ms latency.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -20,7 +20,7 @@ A production-grade ML infrastructure system for real-time feature computation an
 │                       └─────────────────────────────────┬──────────┘│
 │                                                          │           │
 │  ┌────────────────┐    ┌──────────────────┐    ┌────────▼─────────┐ │
-│  │  Fraud/Trading │◀───│  gRPC Inference  │◀───│ Feature Assembler│ │
+│  │ Fraud Detection│◀───│  gRPC Inference  │◀───│ Feature Assembler│ │
 │  │   ML Model     │    │     Server       │    │  (sub-10ms SLA)  │ │
 │  │  (XGBoost/LR)  │    │   <5ms p99       │    └──────────────────┘ │
 │  └────────────────┘    └──────────────────┘                         │

@@ -18,3 +18,13 @@ ENV/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Generated gRPC stubs
+inference_pb2.py
+inference_pb2_grpc.py
+proto/inference_pb2.py
+proto/inference_pb2_grpc.py
+
+# Mypy
+.mypy_cache/
+

@@ -1,3 +1,3 @@
-from .simulator import TransactionSimulator, TransactionConsumer, Transaction, EntityProfile
+from .simulator import EntityProfile, Transaction, TransactionConsumer, TransactionSimulator
 
 __all__ = ["TransactionSimulator", "TransactionConsumer", "Transaction", "EntityProfile"]

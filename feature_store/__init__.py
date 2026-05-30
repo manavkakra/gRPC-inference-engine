@@ -1,4 +1,4 @@
-from .rolling_engine import RollingFeatureEngine, FeatureSnapshot, EntityRingBuffer
+from .rolling_engine import EntityRingBuffer, FeatureSnapshot, RollingFeatureEngine
 from .store import FeatureStore, LRUCache, RedisStore
 
 __all__ = [
