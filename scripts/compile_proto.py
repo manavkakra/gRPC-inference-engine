@@ -13,8 +13,8 @@ import sys
 
 
 def compile_proto() -> None:
-    proto_file  = "proto/inference.proto"
-    output_dir  = "."
+    proto_file = "proto/inference.proto"
+    output_dir = "."
 
     if not os.path.exists(proto_file):
         print(f"ERROR: {proto_file} not found. Run from the project root.")
@@ -27,13 +27,15 @@ def compile_proto() -> None:
         print("       pip install grpcio-tools")
         sys.exit(1)
 
-    ret = protoc.main([
-        "grpc_tools.protoc",
-        f"-I.",
-        f"--python_out={output_dir}",
-        f"--grpc_python_out={output_dir}",
-        proto_file,
-    ])
+    ret = protoc.main(
+        [
+            "grpc_tools.protoc",
+            f"-I.",
+            f"--python_out={output_dir}",
+            f"--grpc_python_out={output_dir}",
+            proto_file,
+        ]
+    )
 
     if ret != 0:
         print("Proto compilation failed.")
