@@ -95,6 +95,8 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ./docker/grafana_datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ./docker/grafana_dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./docker/dashboards:/var/lib/grafana/dashboards:ro
 
 networks:
   default:
