@@ -50,9 +50,8 @@ class FraudModel:
     """Thin wrapper around the pickled model artifact."""
 
     DECISION_THRESHOLDS = {
-        "approve": 0.3,
-        "review": 0.6,
-        "decline": 1.01,
+        "approve": 0.2,
+        "review": 0.5,
     }
 
     def __init__(self, model_path: str = "models/fraud_model.pkl"):

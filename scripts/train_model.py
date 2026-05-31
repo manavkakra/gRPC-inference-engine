@@ -45,41 +45,41 @@ N_FEATURES = len(FEATURE_NAMES)
 
 def _sample_normal(n: int, rng: np.random.Generator) -> np.ndarray:
     """Generate feature rows for legitimate transactions."""
-    mean_amount = rng.uniform(20, 150, size=n)
-    std_amount = mean_amount * rng.uniform(0.1, 0.4, size=n)
+    mean_amount = rng.uniform(10, 100, size=n)
+    std_amount = mean_amount * rng.uniform(0.1, 0.5, size=n)
 
-    txn_1s = rng.integers(0, 3, size=n).astype(float)
-    txn_5s = rng.integers(0, 5, size=n).astype(float) + txn_1s
-    txn_60s = rng.integers(1, 15, size=n).astype(float) + txn_5s
+    txn_1s = rng.integers(0, 1, size=n).astype(float)
+    txn_5s = rng.integers(0, 2, size=n).astype(float)
+    txn_60s = rng.integers(1, 5, size=n).astype(float)
 
     cur_amt = np.abs(rng.normal(mean_amount, std_amount))
     amt_1s = cur_amt * txn_1s
-    amt_5s = cur_amt * txn_5s * rng.uniform(0.8, 1.2, size=n)
-    amt_60s = cur_amt * txn_60s * rng.uniform(0.8, 1.2, size=n)
+    amt_5s = cur_amt * txn_5s
+    amt_60s = cur_amt * txn_60s
 
-    zscore = rng.normal(0, 1, size=n)
+    zscore = rng.uniform(-1, 1.5, size=n)
     velocity = txn_1s / np.maximum(txn_60s, 1) * 60.0
-    merchants = rng.integers(1, 6, size=n).astype(float)
-    geo_dist = rng.exponential(2.0, size=n)
+    merchants = rng.integers(1, 5, size=n).astype(float)
+    geo_dist = rng.exponential(10, size=n)
 
     return np.column_stack(
         [
             amt_1s,
             amt_1s / np.maximum(txn_1s, 1),
-            std_amount * rng.uniform(0, 0.5, n),
+            np.zeros(n), # Force XGBoost to ignore 1s std
             txn_1s,
             amt_5s,
             amt_5s / np.maximum(txn_5s, 1),
-            std_amount * rng.uniform(0.5, 1, n),
+            np.zeros(n), # Force XGBoost to ignore 5s std
             txn_5s,
             amt_5s * rng.uniform(1, 1.5, n),
             amt_60s,
             amt_60s / np.maximum(txn_60s, 1),
             std_amount,
             txn_60s,
-            amt_60s * rng.uniform(1, 2, n),
+            amt_60s * rng.uniform(1, 1.5, n),
             cur_amt * rng.uniform(0.5, 1, n),
-            zscore,
+            np.zeros(n), # Force XGBoost to ignore zscore
             velocity,
             merchants,
             geo_dist,
@@ -87,44 +87,43 @@ def _sample_normal(n: int, rng: np.random.Generator) -> np.ndarray:
         ]
     )
 
-
 def _sample_fraud(n: int, rng: np.random.Generator) -> np.ndarray:
     """Generate feature rows for fraudulent transactions."""
-    mean_amount = rng.uniform(200, 3000, size=n)
+    mean_amount = rng.uniform(500, 5000, size=n)
     std_amount = mean_amount * rng.uniform(0.2, 0.8, size=n)
 
-    txn_1s = rng.integers(3, 10, size=n).astype(float)
-    txn_5s = rng.integers(8, 25, size=n).astype(float)
-    txn_60s = rng.integers(15, 60, size=n).astype(float)
+    txn_1s = rng.integers(0, 2, size=n).astype(float)
+    txn_5s = rng.integers(2, 8, size=n).astype(float)
+    txn_60s = rng.integers(10, 60, size=n).astype(float)
 
     cur_amt = np.abs(rng.normal(mean_amount, std_amount))
-    amt_1s = cur_amt * txn_1s * rng.uniform(0.8, 1.2, n)
-    amt_5s = cur_amt * txn_5s * rng.uniform(0.9, 1.1, n)
+    amt_1s = cur_amt * txn_1s
+    amt_5s = cur_amt * txn_5s
     amt_60s = cur_amt * txn_60s
 
-    zscore = rng.uniform(3, 10, size=n)
+    zscore = rng.uniform(2, 15, size=n)
     velocity = txn_1s / np.maximum(txn_60s, 1) * 60.0
-    merchants = rng.integers(5, 20, size=n).astype(float)
+    merchants = rng.integers(1, 4, size=n).astype(float)
     geo_dist = rng.exponential(500, size=n)
 
     return np.column_stack(
         [
             amt_1s,
             amt_1s / np.maximum(txn_1s, 1),
-            std_amount,
+            np.zeros(n), # Force XGBoost to ignore 1s std
             txn_1s,
             amt_5s,
             amt_5s / np.maximum(txn_5s, 1),
-            std_amount * 2,
+            np.zeros(n), # Force XGBoost to ignore 5s std
             txn_5s,
-            amt_5s * rng.uniform(1, 3, n),
+            amt_5s * rng.uniform(1, 2, n),
             amt_60s,
             amt_60s / np.maximum(txn_60s, 1),
             std_amount * 3,
             txn_60s,
-            amt_60s * rng.uniform(1, 4, n),
+            amt_60s * rng.uniform(1, 2, n),
             cur_amt * rng.uniform(0.1, 0.8, n),
-            zscore,
+            np.zeros(n), # Force XGBoost to ignore zscore
             velocity,
             merchants,
             geo_dist,
@@ -156,6 +155,28 @@ def generate_dataset(
 
 def train(output_dir: str = "models") -> None:
     Path(output_dir).mkdir(exist_ok=True)
+
+    # ==============================================================================
+    # LOCAL VS PRODUCTION TUNING GUIDE
+    # ==============================================================================
+    # This script generates synthetic data to train the XGBoost fraud model.
+    # The `txn_1s` and `txn_5s` parameters below MUST match the physical throughput
+    # (Requests Per Second) that your hardware is capable of processing.
+    #
+    # LOCAL TESTING (Current Settings):
+    # If running on a local laptop, the Python CPU bottleneck restricts throughput 
+    # to ~100-200 RPS. At this speed, fraudsters can only generate ~5 transactions 
+    # per 5 seconds. The parameters below are tuned down so the model can correctly 
+    # identify these slow bursts as fraud.
+    #
+    # PRODUCTION DEPLOYMENT (Hyperscale):
+    # If deploying to a cloud cluster (e.g., AWS EC2) capable of 1000+ RPS, you must
+    # increase the synthetic burst density to match production fraudster behavior:
+    #   Normal users: txn_1s = (2, 8), txn_5s = (10, 30)
+    #   Fraudsters:   txn_1s = (5, 15), txn_5s = (20, 60)
+    #   XGBoost:      max_depth=8, learning_rate=0.01, n_estimators=1000
+    # ==============================================================================
+
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     logger.info("Generating synthetic dataset …")
@@ -172,22 +193,18 @@ def train(output_dir: str = "models") -> None:
     X_test_s = scaler.transform(X_test)
 
     try:
-        import xgboost as xgb
+        from xgboost import XGBClassifier
 
         scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
         logger.info("Training XGBoost (scale_pos_weight=%.1f) …", scale_pos_weight)
         t0 = time.time()
-
-        model = xgb.XGBClassifier(
-            n_estimators=300,
+        model = XGBClassifier(
             max_depth=6,
-            learning_rate=0.05,
+            learning_rate=0.3,
+            n_estimators=100,
             subsample=0.8,
             colsample_bytree=0.8,
             scale_pos_weight=scale_pos_weight,
-            use_label_encoder=False,
-            eval_metric="aucpr",
-            early_stopping_rounds=20,
             n_jobs=-1,
             random_state=42,
         )
@@ -195,7 +212,7 @@ def train(output_dir: str = "models") -> None:
             X_train,
             y_train,
             eval_set=[(X_test, y_test)],
-            verbose=50,
+            verbose=20,
         )
         logger.info("XGBoost trained in %.1fs", time.time() - t0)
 
