@@ -84,11 +84,12 @@ class InferenceClient:
         self._pool: Queue[grpc.Channel] = Queue()
 
         try:
-            import inference_pb2
-            import inference_pb2_grpc
+            import inference_pb2  # type: ignore
+            import inference_pb2_grpc  # type: ignore
 
-            self._pb2 = inference_pb2
-            self._pb2_grpc = inference_pb2_grpc
+            from typing import Any
+            self._pb2: Any = inference_pb2
+            self._pb2_grpc: Any = inference_pb2_grpc
         except ImportError as exc:
             raise RuntimeError(
                 "Generated gRPC stubs not found. " "Run `python scripts/compile_proto.py` first."
@@ -263,14 +264,16 @@ class AsyncInferenceClient:
         self._target = target
         self._timeout_ms = timeout_ms
         self._channel = None
-        self._stub = None
+        from typing import Any
+        self._stub: Any = None
 
         try:
-            import inference_pb2
-            import inference_pb2_grpc
+            import inference_pb2  # type: ignore
+            import inference_pb2_grpc  # type: ignore
 
-            self._pb2 = inference_pb2
-            self._pb2_grpc = inference_pb2_grpc
+            from typing import Any
+            self._pb2: Any = inference_pb2
+            self._pb2_grpc: Any = inference_pb2_grpc
         except ImportError as exc:
             raise RuntimeError("Compile proto stubs first.") from exc
 

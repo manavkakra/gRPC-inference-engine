@@ -108,7 +108,7 @@ class FraudModel:
 
     @property
     def version(self) -> str:
-        return self._version
+        return str(self._version)
 
 
 class InferenceServiceCore:

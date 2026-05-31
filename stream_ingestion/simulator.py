@@ -120,7 +120,8 @@ class KafkaProducer:
 
     def __init__(self, bootstrap: str = "127.0.0.1:9092"):
         self._available = False
-        self._producer = None
+        from typing import Any
+        self._producer: Any = None
         self._bootstrap = bootstrap
         self._sent_count = 0
 
@@ -186,7 +187,8 @@ class TransactionSimulator:
         self._running = False
         self._grpc_target = grpc_target
         self._grpc_channel = None
-        self._grpc_stub = None
+        from typing import Any
+        self._grpc_stub: Any = None
         self._grpc_frauds = 0
 
         self._profiles: list[EntityProfile] = []
@@ -210,7 +212,7 @@ class TransactionSimulator:
         """
         if self._grpc_target:
             import grpc
-            import inference_pb2_grpc
+            import inference_pb2_grpc  # type: ignore
             
             self._grpc_channel = grpc.aio.insecure_channel(self._grpc_target)
             self._grpc_stub = inference_pb2_grpc.InferenceServiceStub(self._grpc_channel)
@@ -282,10 +284,12 @@ class TransactionSimulator:
             )
 
     async def _send_grpc(self, txn: Transaction) -> None:
-        import inference_pb2
-        req = inference_pb2.InferenceRequest(
+        import inference_pb2  # type: ignore
+        from typing import Any
+        pb2: Any = inference_pb2
+        req = pb2.InferenceRequest(
             request_id=str(uuid.uuid4()),
-            transaction=inference_pb2.Transaction(
+            transaction=pb2.Transaction(
                 transaction_id=txn.transaction_id,
                 entity_id=txn.entity_id,
                 amount=txn.amount,
@@ -341,7 +345,8 @@ class TransactionConsumer:
         self._bootstrap = bootstrap
         self._group_id = group_id
         self._auto_offset = auto_offset
-        self._consumer = None
+        from typing import Any
+        self._consumer: Any = None
         self._available = False
 
     async def start(self) -> None:

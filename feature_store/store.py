@@ -64,6 +64,8 @@ class RedisStore:
 
     def __init__(self, host: str = "127.0.0.1", port: int = 6379, db: int = 0):
         self._available = False
+        from typing import Any
+        self._client: Any = None
         try:
             import redis
 

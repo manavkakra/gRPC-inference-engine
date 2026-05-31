@@ -123,7 +123,7 @@ class EntityRingBuffer:
         self.amounts = np.zeros(capacity, dtype=np.float64)
         self.latitudes = np.zeros(capacity, dtype=np.float64)
         self.longitudes = np.zeros(capacity, dtype=np.float64)
-        self.merchants = deque(maxlen=capacity)
+        self.merchants: deque[str] = deque(maxlen=capacity)
 
         self._lock = threading.RLock()
         self.last_lat = 0.0

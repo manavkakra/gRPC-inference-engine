@@ -162,8 +162,11 @@ def bench_grpc(host: str = "127.0.0.1", port: int = 50051, n: int = 1_000) -> No
     try:
         import grpc
 
-        import inference_pb2
-        import inference_pb2_grpc
+        import inference_pb2  # type: ignore
+        import inference_pb2_grpc  # type: ignore
+        from typing import Any
+        pb2: Any = inference_pb2
+        pb2_grpc: Any = inference_pb2_grpc
     except ImportError:
         print("  ⚠ gRPC stubs not compiled. Run `python scripts/compile_proto.py`.")
         return
@@ -176,19 +179,19 @@ def bench_grpc(host: str = "127.0.0.1", port: int = 50051, n: int = 1_000) -> No
             ("grpc.max_receive_message_length", 16 * 1024 * 1024),
         ],
     )
-    stub = inference_pb2_grpc.InferenceServiceStub(channel)
+    stub = pb2_grpc.InferenceServiceStub(channel)
 
     try:
-        stub.Health(inference_pb2.HealthRequest())
+        stub.Health(pb2.HealthRequest())
     except Exception as exc:
         print(f"  ✗ Cannot reach server: {exc }")
         return
 
     latencies_us = []
     for i in range(n):
-        req = inference_pb2.InferenceRequest(
+        req = pb2.InferenceRequest(
             request_id=str(i),
-            transaction=inference_pb2.Transaction(
+            transaction=pb2.Transaction(
                 transaction_id=f"grpc_bench_{i }",
                 entity_id=f"bench_user_{i %50 :05d}",
                 amount=random.uniform(5, 1000),
