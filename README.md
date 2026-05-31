@@ -1,6 +1,6 @@
 # Distributed Streaming Feature Store & Low-Latency Inference Engine
 
-An end-to-end, production-grade machine learning platform engineered for real-time transaction fraud detection. By seamlessly integrating high-throughput Kafka stream ingestion, a Redis-backed rolling feature store, and an ultra-low latency gRPC inference engine, this system processes thousands of events per second to evaluate and intercept fraudulent activity with sub-10ms latency.
+An end-to-end, production-grade machine learning system engineered for real-time transaction fraud detection. By seamlessly integrating high-throughput Kafka stream ingestion, a Redis-backed rolling feature store, and an ultra-low latency gRPC inference engine, this system processes thousands of events per second to evaluate and intercept fraudulent activity with sub-10ms latency.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -69,8 +69,6 @@ An end-to-end, production-grade machine learning platform engineered for real-ti
    Create a virtual environment and install the required Python packages:
    ```bash
    python -m venv venv
-   # On Windows: venv\Scripts\activate
-   # On macOS/Linux: source venv/bin/activate
    pip install -r requirements.txt
    ```
 
@@ -115,7 +113,13 @@ To run the full end-to-end system, you will need to start several processes. You
    ```
    Open your browser and navigate to **http://localhost:3000** to view the Real-Time Fraud Detection dashboard.
 
-## ⚠️ Local vs Production Tuning (RPS Limits)
+5. **Run the Benchmark (Optional)**  
+   To test the inference speed and gRPC latency:
+   ```bash
+   python scripts/benchmark.py --grpc
+   ```
+
+## *Local vs Production Tuning (RPS Limits)*
 
 This architecture is designed to handle **1000+ Requests Per Second (RPS)** in production. Fraud is detected by measuring mathematical standard deviations in sub-second bursts (1s and 5s windows).
 
@@ -123,12 +127,6 @@ This architecture is designed to handle **1000+ Requests Per Second (RPS)** in p
 Your CPU will likely bottleneck Python's asyncio event loop to ~100-200 RPS. At this speed, the simulator physically cannot generate the high-density bursts the XGBoost model expects. 
 * To fix this, `scripts/train_model.py` is currently tuned for **Local Hardware**, which artificially slows down the synthetic training data so the model can detect fraud at 100 RPS.
 * **Before deploying to production**, you MUST edit `scripts/train_model.py` and increase the `txn_1s` and `txn_5s` generation rates to match your cloud cluster's true throughput, and re-enable `max_depth=8` on the XGBoost model.
-
-5. **Run the Benchmark (Optional)**  
-   To test the inference speed and gRPC latency:
-   ```bash
-   python scripts/benchmark.py --grpc
-   ```
 
 ## Performance Benchmarks
 
