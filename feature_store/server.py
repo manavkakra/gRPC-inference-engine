@@ -19,9 +19,10 @@ from feature_store.store import FeatureStore
 logger = logging.getLogger(__name__)
 
 
-from prometheus_client import start_http_server, Counter
+from prometheus_client import Counter, start_http_server
 
 INGEST_COUNTER = Counter("feature_store_ingestion_total", "Total events ingested")
+
 
 class HealthServer:
     """Tiny HTTP server for /health, /stats, /metrics endpoints."""
@@ -34,7 +35,7 @@ class HealthServer:
         self._app.router.add_get("/stats", self._stats)
         self._app.router.add_get("/ready", self._ready)
         self._runner: Optional[web.AppRunner] = None
-        
+
         try:
             start_http_server(8001)
             logger.info("Prometheus metrics server listening on port 8001")
@@ -185,8 +186,8 @@ def main() -> None:
         "--simulate", action="store_true", help="Use built-in simulator instead of Kafka"
     )
     parser.add_argument("--rps", type=int, default=1000, help="Target RPS for simulator")
-    parser.add_argument("--kafka", type=str, default="localhost:9092")
-    parser.add_argument("--redis-host", type=str, default="localhost")
+    parser.add_argument("--kafka", type=str, default="127.0.0.1:9092")
+    parser.add_argument("--redis-host", type=str, default="127.0.0.1")
     parser.add_argument("--redis-port", type=int, default=6379)
     parser.add_argument("--http-port", type=int, default=8080)
     parser.add_argument("--l1-capacity", type=int, default=10_000)

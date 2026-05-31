@@ -189,7 +189,7 @@ class InferenceServiceCore:
 def build_grpc_server(
     feature_store,
     model: FraudModel,
-    host: str = "0.0.0.0",
+    host: str = "[::]",
     port: int = 50051,
     max_workers: int = 16,
 ) -> Optional[grpc.Server]:
@@ -393,7 +393,7 @@ def main() -> None:
         return
 
     store = FeatureStore(
-        redis_host=os.environ.get("REDIS_HOST", "localhost"),
+        redis_host=os.environ.get("REDIS_HOST", "127.0.0.1"),
         redis_port=int(os.environ.get("REDIS_PORT", 6379)),
     )
     model = FraudModel(model_path)
@@ -405,7 +405,7 @@ def main() -> None:
 
     if PROM_AVAILABLE:
         prom_start(prom_port)
-        logger.info("Prometheus metrics at http://localhost:%d/metrics", prom_port)
+        logger.info("Prometheus metrics at http://127.0.0.1:%d/metrics", prom_port)
 
     def _reload_model(*_):
         model.reload()

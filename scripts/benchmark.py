@@ -157,7 +157,7 @@ def bench_inference_inprocess(store: FeatureStore, n: int = 5_000) -> None:
     print(f"  Concurrent RPS: {n /elapsed_conc :,.0f}")
 
 
-def bench_grpc(host: str = "localhost", port: int = 50051, n: int = 1_000) -> None:
+def bench_grpc(host: str = "127.0.0.1", port: int = 50051, n: int = 1_000) -> None:
     print(f"\n[gRPC] Round-trip benchmark → {host }:{port }  (n={n :,}) …")
     try:
         import grpc
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Feature store & inference benchmark")
     parser.add_argument("--n", type=int, default=10_000, help="Sample count")
     parser.add_argument("--grpc", action="store_true", help="Also benchmark gRPC endpoint")
-    parser.add_argument("--host", type=str, default="localhost")
+    parser.add_argument("--host", type=str, default="127.0.0.1")
     parser.add_argument("--port", type=int, default=50051)
     args = parser.parse_args()
 

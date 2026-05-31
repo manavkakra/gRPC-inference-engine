@@ -185,14 +185,14 @@ class TestFeatureStore:
 @pytest.mark.redis
 class TestRedisIntegration:
     """
-    These tests require a running Redis on localhost:6379.
+    These tests require a running Redis on 127.0.0.1:6379.
     Mark with -m redis to run selectively:
         pytest tests/ -m redis
     """
 
     @pytest.fixture
     def redis_store(self):
-        s = FeatureStore(redis_host="localhost", redis_port=6379, l1_capacity=10)
+        s = FeatureStore(redis_host="127.0.0.1", redis_port=6379, l1_capacity=10)
         if not s._l2.available:
             pytest.skip("Redis not available")
         return s

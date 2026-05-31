@@ -62,7 +62,7 @@ class RedisStore:
 
     _TTL_SECONDS = 300
 
-    def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0):
+    def __init__(self, host: str = "127.0.0.1", port: int = 6379, db: int = 0):
         self._available = False
         try:
             import redis
@@ -142,7 +142,7 @@ class FeatureStore:
 
     def __init__(
         self,
-        redis_host: str = "localhost",
+        redis_host: str = "127.0.0.1",
         redis_port: int = 6379,
         l1_capacity: int = 10_000,
         buffer_capacity: int = 1_000,

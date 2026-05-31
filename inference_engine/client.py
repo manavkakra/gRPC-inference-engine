@@ -75,7 +75,7 @@ class InferenceClient:
 
     def __init__(
         self,
-        target: str = "localhost:50051",
+        target: str = "127.0.0.1:50051",
         pool_size: int = 4,
         timeout_ms: int = 5_000,
     ):
@@ -259,7 +259,7 @@ class AsyncInferenceClient:
     One channel is sufficient for async — the HTTP/2 transport multiplexes.
     """
 
-    def __init__(self, target: str = "localhost:50051", timeout_ms: int = 5_000):
+    def __init__(self, target: str = "127.0.0.1:50051", timeout_ms: int = 5_000):
         self._target = target
         self._timeout_ms = timeout_ms
         self._channel = None
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Quick inference client test")
-    parser.add_argument("--host", default="localhost")
+    parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=50051)
     parser.add_argument("--entity", default="test_user_001")
     parser.add_argument("--amount", type=float, default=250.0)

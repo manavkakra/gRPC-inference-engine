@@ -118,7 +118,7 @@ class KafkaProducer:
 
     TOPIC = "transactions"
 
-    def __init__(self, bootstrap: str = "localhost:9092"):
+    def __init__(self, bootstrap: str = "127.0.0.1:9092"):
         self._available = False
         self._producer = None
         self._bootstrap = bootstrap
@@ -177,7 +177,7 @@ class TransactionSimulator:
         n_churner: int = 50,
         n_fraudster: int = 50,
         target_rps: int = 1000,
-        kafka_bootstrap: str = "localhost:9092",
+        kafka_bootstrap: str = "127.0.0.1:9092",
         on_transaction: Optional[Callable[[Transaction], None]] = None,
         grpc_target: Optional[str] = None,
     ):
@@ -334,7 +334,7 @@ class TransactionConsumer:
 
     def __init__(
         self,
-        bootstrap: str = "localhost:9092",
+        bootstrap: str = "127.0.0.1:9092",
         group_id: str = "feature-store-consumer",
         auto_offset: str = "latest",
     ):
@@ -387,9 +387,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--duration", type=float, default=60.0, help="Runtime in seconds (0=forever)"
     )
-    parser.add_argument("--kafka", type=str, default="localhost:9092")
+    parser.add_argument("--kafka", type=str, default="127.0.0.1:9092")
     parser.add_argument("--grpc", action="store_true", help="Mirror traffic to Inference Engine")
-    parser.add_argument("--grpc-target", type=str, default="localhost:50051")
+    parser.add_argument("--grpc-target", type=str, default="127.0.0.1:50051")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

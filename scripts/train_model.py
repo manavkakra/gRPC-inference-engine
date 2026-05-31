@@ -66,11 +66,11 @@ def _sample_normal(n: int, rng: np.random.Generator) -> np.ndarray:
         [
             amt_1s,
             amt_1s / np.maximum(txn_1s, 1),
-            np.zeros(n), # Force XGBoost to ignore 1s std
+            np.zeros(n),  # Force XGBoost to ignore 1s std
             txn_1s,
             amt_5s,
             amt_5s / np.maximum(txn_5s, 1),
-            np.zeros(n), # Force XGBoost to ignore 5s std
+            np.zeros(n),  # Force XGBoost to ignore 5s std
             txn_5s,
             amt_5s * rng.uniform(1, 1.5, n),
             amt_60s,
@@ -79,13 +79,14 @@ def _sample_normal(n: int, rng: np.random.Generator) -> np.ndarray:
             txn_60s,
             amt_60s * rng.uniform(1, 1.5, n),
             cur_amt * rng.uniform(0.5, 1, n),
-            np.zeros(n), # Force XGBoost to ignore zscore
+            np.zeros(n),  # Force XGBoost to ignore zscore
             velocity,
             merchants,
             geo_dist,
             cur_amt,
         ]
     )
+
 
 def _sample_fraud(n: int, rng: np.random.Generator) -> np.ndarray:
     """Generate feature rows for fraudulent transactions."""
@@ -110,11 +111,11 @@ def _sample_fraud(n: int, rng: np.random.Generator) -> np.ndarray:
         [
             amt_1s,
             amt_1s / np.maximum(txn_1s, 1),
-            np.zeros(n), # Force XGBoost to ignore 1s std
+            np.zeros(n),  # Force XGBoost to ignore 1s std
             txn_1s,
             amt_5s,
             amt_5s / np.maximum(txn_5s, 1),
-            np.zeros(n), # Force XGBoost to ignore 5s std
+            np.zeros(n),  # Force XGBoost to ignore 5s std
             txn_5s,
             amt_5s * rng.uniform(1, 2, n),
             amt_60s,
@@ -123,7 +124,7 @@ def _sample_fraud(n: int, rng: np.random.Generator) -> np.ndarray:
             txn_60s,
             amt_60s * rng.uniform(1, 2, n),
             cur_amt * rng.uniform(0.1, 0.8, n),
-            np.zeros(n), # Force XGBoost to ignore zscore
+            np.zeros(n),  # Force XGBoost to ignore zscore
             velocity,
             merchants,
             geo_dist,
@@ -164,9 +165,9 @@ def train(output_dir: str = "models") -> None:
     # (Requests Per Second) that your hardware is capable of processing.
     #
     # LOCAL TESTING (Current Settings):
-    # If running on a local laptop, the Python CPU bottleneck restricts throughput 
-    # to ~100-200 RPS. At this speed, fraudsters can only generate ~5 transactions 
-    # per 5 seconds. The parameters below are tuned down so the model can correctly 
+    # If running on a local laptop, the Python CPU bottleneck restricts throughput
+    # to ~100-200 RPS. At this speed, fraudsters can only generate ~5 transactions
+    # per 5 seconds. The parameters below are tuned down so the model can correctly
     # identify these slow bursts as fraud.
     #
     # PRODUCTION DEPLOYMENT (Hyperscale):
