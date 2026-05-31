@@ -194,15 +194,21 @@ class FeatureStore:
           L1 (memory) → L2 (Redis) → live compute (fallback)
         """
         now = time.time()
+        import dataclasses
 
         snap = self._l1.get(entity_id)
-        if snap is not None and (now - snap.computed_at) < max_age_seconds:
-            return snap
+        if snap is None:
+            snap = self._l2.get(entity_id)
+            if snap is not None:
+                self._l1.set(entity_id, snap)
 
-        snap = self._l2.get(entity_id)
-        if snap is not None and (now - snap.computed_at) < max_age_seconds:
-            self._l1.set(entity_id, snap)
-            return snap
+        if snap is not None:
+            return dataclasses.replace(
+                snap,
+                current_amount=current_amount,
+                merchant_category=merchant_category,
+                computed_at=now
+            )
 
         snap = self._engine.compute_features(
             entity_id, current_amount, current_lat, current_lon, merchant_category

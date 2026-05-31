@@ -19,6 +19,10 @@ from feature_store.store import FeatureStore
 logger = logging.getLogger(__name__)
 
 
+from prometheus_client import start_http_server, Counter
+
+INGEST_COUNTER = Counter("feature_store_ingestion_total", "Total events ingested")
+
 class HealthServer:
     """Tiny HTTP server for /health, /stats, /metrics endpoints."""
 
@@ -30,6 +34,12 @@ class HealthServer:
         self._app.router.add_get("/stats", self._stats)
         self._app.router.add_get("/ready", self._ready)
         self._runner: Optional[web.AppRunner] = None
+        
+        try:
+            start_http_server(8001)
+            logger.info("Prometheus metrics server listening on port 8001")
+        except Exception as e:
+            logger.warning(f"Could not start Prometheus metrics server: {e}")
 
     async def start(self) -> None:
         self._runner = web.AppRunner(self._app)
@@ -60,7 +70,7 @@ async def kafka_ingest_loop(store: FeatureStore, bootstrap: str) -> None:
     """Consume transactions from Kafka and feed them into the FeatureStore."""
     from stream_ingestion.simulator import TransactionConsumer
 
-    consumer = TransactionConsumer(bootstrap_servers=bootstrap)
+    consumer = TransactionConsumer(bootstrap=bootstrap)
     await consumer.start()
     logger.info("Kafka consumer started, ingesting into FeatureStore …")
 
@@ -78,6 +88,7 @@ async def kafka_ingest_loop(store: FeatureStore, bootstrap: str) -> None:
             ts=txn.timestamp_ms / 1000.0,
         )
         ingested += 1
+        INGEST_COUNTER.inc()
 
         if time.time() - t_report >= 5.0:
             rps = ingested / max(time.time() - t_report, 0.001)
