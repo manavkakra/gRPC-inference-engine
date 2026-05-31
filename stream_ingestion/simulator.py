@@ -7,10 +7,14 @@ import math
 import random
 import time
 import uuid
+import sys
+import os
 from dataclasses import asdict, dataclass
 from typing import AsyncIterator, Callable, Optional
 
 import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +131,7 @@ class KafkaProducer:
             self._producer = AIOKafkaProducer(
                 bootstrap_servers=self._bootstrap,
                 value_serializer=lambda v: json.dumps(v).encode(),
-                compression_type="lz4",
                 linger_ms=5,
-                batch_size=65536,
                 acks=1,
             )
             await self._producer.start()
@@ -177,10 +179,15 @@ class TransactionSimulator:
         target_rps: int = 1000,
         kafka_bootstrap: str = "localhost:9092",
         on_transaction: Optional[Callable[[Transaction], None]] = None,
+        grpc_target: Optional[str] = None,
     ):
         self._on_transaction = on_transaction
         self._target_rps = target_rps
         self._running = False
+        self._grpc_target = grpc_target
+        self._grpc_channel = None
+        self._grpc_stub = None
+        self._grpc_frauds = 0
 
         self._profiles: list[EntityProfile] = []
         for i in range(n_normal):
@@ -201,6 +208,14 @@ class TransactionSimulator:
         Run the simulator.
         duration_seconds=0 → run until cancelled.
         """
+        if self._grpc_target:
+            import grpc
+            import inference_pb2_grpc
+            
+            self._grpc_channel = grpc.aio.insecure_channel(self._grpc_target)
+            self._grpc_stub = inference_pb2_grpc.InferenceServiceStub(self._grpc_channel)
+            logger.info("gRPC integration enabled, target: %s", self._grpc_target)
+
         await self._kafka.start()
         self._running = True
         self._start_time = time.time()
@@ -221,6 +236,8 @@ class TransactionSimulator:
 
         self._running = False
         await self._kafka.stop()
+        if self._grpc_channel:
+            await self._grpc_channel.close()
         self._print_summary()
 
     async def _entity_loop(self, profile: EntityProfile) -> None:
@@ -245,6 +262,14 @@ class TransactionSimulator:
             await loop.run_in_executor(None, self._on_transaction, txn)
 
         await self._kafka.send(txn)
+        
+        if self._grpc_stub:
+            # Wait 2.0s to ensure Feature Store has ingested this transaction into Redis
+            # (Increased from 50ms because local CPUs cause a Kafka backlog)
+            async def delayed_grpc():
+                await asyncio.sleep(2.0)
+                await self._send_grpc(txn)
+            asyncio.create_task(delayed_grpc())
 
         if self._emitted % 5000 == 0:
             elapsed = time.time() - self._start_time
@@ -256,6 +281,27 @@ class TransactionSimulator:
                 100.0 * self._fraud_emitted / max(self._emitted, 1),
             )
 
+    async def _send_grpc(self, txn: Transaction) -> None:
+        import inference_pb2
+        req = inference_pb2.InferenceRequest(
+            request_id=str(uuid.uuid4()),
+            transaction=inference_pb2.Transaction(
+                transaction_id=txn.transaction_id,
+                entity_id=txn.entity_id,
+                amount=txn.amount,
+                merchant_category=txn.merchant_category,
+                latitude=txn.latitude,
+                longitude=txn.longitude,
+                timestamp_ms=int(txn.timestamp_ms),
+            ),
+        )
+        try:
+            resp = await self._grpc_stub.Predict(req, timeout=1.0)
+            if resp.is_fraud:
+                self._grpc_frauds += 1
+        except Exception:
+            pass
+
     def _print_summary(self) -> None:
         elapsed = time.time() - self._start_time
         rps = self._emitted / max(elapsed, 0.001)
@@ -265,7 +311,8 @@ class TransactionSimulator:
             f"  Duration  : {elapsed :.1f}s\n"
             f"  Emitted   : {self ._emitted :,} events\n"
             f"  Throughput: {rps :,.0f} RPS\n"
-            f"  Fraud rate: {100 *self ._fraud_emitted /max (self ._emitted ,1 ):.1f}%\n"
+            f"  Sim Fraud : {100 *self ._fraud_emitted /max (self ._emitted ,1 ):.1f}%\n"
+            f"  gRPC Found: {100 *self ._grpc_frauds /max (self ._emitted ,1 ):.1f}%\n"
             f"  Kafka sent: {self ._kafka .sent :,}\n"
             f"{'─'*50 }"
         )
@@ -341,6 +388,8 @@ if __name__ == "__main__":
         "--duration", type=float, default=60.0, help="Runtime in seconds (0=forever)"
     )
     parser.add_argument("--kafka", type=str, default="localhost:9092")
+    parser.add_argument("--grpc", action="store_true", help="Mirror traffic to Inference Engine")
+    parser.add_argument("--grpc-target", type=str, default="localhost:50051")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -350,5 +399,6 @@ if __name__ == "__main__":
         n_churner=args.churners,
         n_fraudster=args.fraudsters,
         kafka_bootstrap=args.kafka,
+        grpc_target=args.grpc_target if args.grpc else None,
     )
     asyncio.run(sim.run(duration_seconds=args.duration))
